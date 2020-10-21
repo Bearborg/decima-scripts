@@ -2,7 +2,10 @@ import binascii
 import struct
 import os
 import io
+from codecs import iterdecode
 from enum import IntEnum, IntFlag
+from functools import partial
+from itertools import islice
 
 from typing import Dict, BinaryIO, TypeVar, Generic, List, Any, Tuple
 
@@ -25,7 +28,7 @@ class Resource:
         self.uuid = stream.read(16)
 
     def __str__(self):
-        return '{}: {}'.format(self.type, str(binascii.hexlify(self.uuid), encoding='ASCII'))
+        return '{}: {}'.format(self.type, binascii.hexlify(self.uuid).decode('ASCII'))
 
     def __repr__(self):
         return self.__str__()
@@ -55,7 +58,7 @@ class Ref(Generic[T]):
     def __str__(self):
         ret = 'Type {} Ref: '.format(self.type)
         if hasattr(self, 'hash'):
-            ret += str(binascii.hexlify(self.hash), encoding='ASCII')
+            ret += binascii.hexlify(self.hash).decode('ASCII')
         if hasattr(self, 'path'):
             ret += ', ' + self.path
         return ret
@@ -104,6 +107,34 @@ class CharacterDescriptionComponentResource(Resource):
         return '{}: {}'.format(self.type, self.name)
 
 
+class CreditsColumn(Resource):
+    def __init__(self, stream: BinaryIO):
+        Resource.__init__(self, stream)
+        self.name = parse_hashed_string(stream)
+        name_len = struct.unpack('I', stream.read(4))[0]
+        self.credits_name = read_utf16_chars(stream, name_len)
+        self.style = Ref(stream)
+        self.style_2 = Ref(stream)
+        self.unk = Ref(stream)
+        assert self.unk.type == 0
+
+    def __str__(self):
+        return '{}: {}'.format(self.type, self.name)
+
+
+class CreditsRow(Resource):
+    def __init__(self, stream: BinaryIO):
+        Resource.__init__(self, stream)
+        self.name = parse_hashed_string(stream)
+        column_count = struct.unpack('I', stream.read(4))[0]
+        self.columns: List[Ref[CreditsColumn]] = [Ref(stream) for _ in range(column_count)]
+        self.style = Ref(stream)
+        self.unk_1, self.unk_2 = struct.unpack('bb', stream.read(2))
+
+    def __str__(self):
+        return '{}: {}'.format(self.type, self.name)
+
+
 # TODO: Unfinished
 class DamageAreaResource(Resource):
     def __init__(self, stream: BinaryIO):
@@ -114,6 +145,17 @@ class DamageAreaResource(Resource):
         self.uuid = stream.read(16)
         stream.seek(start_pos)
         self.data = stream.read(self.size + 12)
+
+
+class DataSourceCreditsResource(Resource):
+    def __init__(self, stream: BinaryIO):
+        Resource.__init__(self, stream)
+        self.name = parse_hashed_string(stream)
+        row_count = struct.unpack('I', stream.read(4))[0]
+        self.rows: List[Ref[CreditsRow]] = [Ref(stream) for _ in range(row_count)]
+
+    def __str__(self):
+        return '{}: {}'.format(self.type, self.name)
 
 
 # TODO: Unfinished
@@ -149,9 +191,7 @@ class EntityResource(Resource):
         Ref(stream)
         Ref(stream)
         ref_count = struct.unpack('I', stream.read(4))[0]
-        self.ref_list: List[Ref] = list()
-        for i in range(ref_count):
-            self.ref_list.append(Ref(stream))
+        self.ref_list: List[Ref] = [Ref(stream) for _ in range(ref_count)]
         self.unk6 = struct.unpack('f', stream.read(4))[0]
         self.unk7 = struct.unpack('b', stream.read(1))[0]
 
@@ -202,15 +242,11 @@ class FocusScannedInfo(Resource):
         self.description: Ref[LocalizedTextResource] = Ref(stream)
         self.target_type = Ref(stream)
         category_count = struct.unpack('I', stream.read(4))[0]
-        self.categories: List[Ref] = list()
-        for i in range(category_count):
-            self.categories.append(Ref(stream))
+        self.categories: List[Ref] = [Ref(stream) for _ in range(category_count)]
         self.scannable_body = Ref(stream)
         self.outlineSettings = Ref(stream)
         property_count = struct.unpack('I', stream.read(4))[0]
-        self.properties: List[Ref] = list()
-        for i in range(property_count):
-            self.properties.append(Ref(stream))
+        self.properties: List[Ref] = [Ref(stream) for _ in range(property_count)]
         self.graph_condition = Ref(stream)
 
     def __str__(self):
@@ -232,7 +268,7 @@ class FocusTargetComponentResource(Resource):
         assert self.unk_byte_1 == 0
         self.focus_scanned_info: Ref[FocusScannedInfo] = Ref(stream)
         unk_ref_count = struct.unpack('I', stream.read(4))[0]
-        self.unk_ref_list = [Ref(stream) for i in range(unk_ref_count)]
+        self.unk_ref_list = [Ref(stream) for _ in range(unk_ref_count)]
         self.unk_byte_2 = struct.unpack('b', stream.read(1))[0]
         self.focus_tracking_path_entity = Ref(stream)
 
@@ -248,30 +284,20 @@ class HumanoidBodyVariant(Resource):
         self.model_part = Ref(stream)
         self.ability_pose_deformer = Ref(stream)
         unk_refs_1_count = struct.unpack('I', stream.read(4))[0]
-        self.unk_refs_1: List[Ref] = list()
-        for i in range(unk_refs_1_count):
-            self.unk_refs_1.append(Ref(stream))
+        self.unk_refs_1: List[Ref] = [Ref(stream) for _ in range(unk_refs_1_count)]
         unk_refs_2_count = struct.unpack('I', stream.read(4))[0]
-        self.unk_refs_2: List[Ref] = list()
-        for i in range(unk_refs_2_count):
-            self.unk_refs_2.append(Ref(stream))
+        self.unk_refs_2: List[Ref] = [Ref(stream) for _ in range(unk_refs_2_count)]
         unk_refs_3_count = struct.unpack('I', stream.read(4))[0]
-        self.unk_refs_3: List[Ref] = list()
-        for i in range(unk_refs_3_count):
-            self.unk_refs_3.append(Ref(stream))
+        self.unk_refs_3: List[Ref] = [Ref(stream) for _ in range(unk_refs_3_count)]
         self.unk_ref_4 = Ref(stream)
         self.unk_int_5 = struct.unpack('I', stream.read(4))[0]
         self.unk_ref_6 = Ref(stream)
         self.unk_int_7 = struct.unpack('I', stream.read(4))[0]
         self.unk_float_8 = struct.unpack('f', stream.read(4))[0]
         unk_refs_9_count = struct.unpack('I', stream.read(4))[0]
-        self.unk_refs_9: List[Ref] = list()
-        for i in range(unk_refs_9_count):
-            self.unk_refs_9.append(Ref(stream))
+        self.unk_refs_9: List[Ref] = [Ref(stream) for _ in range(unk_refs_9_count)]
         unk_strings_10_count = struct.unpack('I', stream.read(4))[0]
-        self.unk_strings_10: List[str] = list()
-        for i in range(unk_strings_10_count):
-            self.unk_strings_10.append(parse_hashed_string(stream))
+        self.unk_strings_10: List[str] = [parse_hashed_string(stream) for _ in range(unk_strings_10_count)]
 
     def __str__(self):
         return '{}: {}'.format(self.type, self.name)
@@ -283,9 +309,7 @@ class HumanoidBodyVariantGroup(Resource):
         Resource.__init__(self, stream)
         self.name = parse_hashed_string(stream)
         body_variants_count = struct.unpack('I', stream.read(4))[0]
-        self.body_variants: List[Ref[HumanoidBodyVariant]] = list()
-        for i in range(body_variants_count):
-            self.body_variants.append(Ref(stream))
+        self.body_variants: List[Ref[HumanoidBodyVariant]] = [Ref(stream) for _ in range(body_variants_count)]
 
     def __str__(self):
         return '{}: {}'.format(self.type, self.name)
@@ -331,9 +355,7 @@ class InventoryEntityResource(Resource):
         self.multiAction = Ref(stream)
         self.unk3 = Ref(stream)
         ref_count = struct.unpack('I', stream.read(4))[0]
-        self.ref_list: List[Ref] = list()
-        for i in range(ref_count):
-            self.ref_list.append(Ref(stream))
+        self.ref_list: List[Ref] = [Ref(stream) for _ in range(ref_count)]
 
         stream.seek(start_pos)
         self.data = stream.read(self.size + 12)
@@ -355,14 +377,10 @@ class InventoryItemComponentResource(Resource):
         self.unk_ref2 = Ref(stream)
         self.unk_ref3 = Ref(stream)
         ref_count = struct.unpack('I', stream.read(4))[0]
-        self.ref_list: List[Ref] = list()
-        for i in range(ref_count):
-            self.ref_list.append(Ref(stream))
+        self.ref_list: List[Ref] = [Ref(stream) for _ in range(ref_count)]
         self.unk_short = struct.unpack('H', stream.read(2))[0]
         ref_count_2 = struct.unpack('I', stream.read(4))[0]
-        self.ref_list_2: List[Ref] = list()
-        for i in range(ref_count_2):
-            self.ref_list_2.append(Ref(stream))
+        self.ref_list_2: List[Ref] = [Ref(stream) for _ in range(ref_count_2)]
         stream.read(5)  # TODO
         self.soundbank = Ref(stream)
         self.unk_ref3 = Ref(stream)
@@ -376,9 +394,7 @@ class InventoryLootPackageComponentResource(Resource):
         self.unk_ref = Ref(stream)
         assert(self.unk_ref.type == 0), "unk_ref populated"
         ref_count = struct.unpack('I', stream.read(4))[0]
-        self.loot_slot: List[Ref[LootSlot]] = list()
-        for i in range(ref_count):
-            self.loot_slot.append(Ref(stream))
+        self.loot_slot: List[Ref[LootSlot]] = [Ref(stream) for _ in range(ref_count)]
         self.inventory_item_component: Ref[InventoryItemComponentResource] = Ref(stream)
 
     def __str__(self):
@@ -411,18 +427,14 @@ class LocalizedSimpleSoundResource(Resource):
     def __init__(self, stream: BinaryIO):
         Resource.__init__(self, stream)
         self.name = parse_hashed_string(stream)
-        self.unk_floats_1: List[float] = list()
-        for i in range(17):
-            self.unk_floats_1.append(struct.unpack('f', stream.read(4))[0])
+        self.unk_floats_1: List[float] = [struct.unpack('f', stream.read(4))[0] for _ in range(17)]
         self.unk_bytes_2 = stream.read(17)
-        self.unk_floats_3: List[float] = list()
-        for i in range(9):
-            self.unk_floats_3.append(struct.unpack('f', stream.read(4))[0])
+        self.unk_floats_3: List[float] = [struct.unpack('f', stream.read(4))[0] for _ in range(9)]
         self.unk_bytes_4 = stream.read(3)
         self.state_relative_mix = Ref(stream)
         self.sound_preset = Ref(stream)
         filename_len = struct.unpack('I', stream.read(4))[0]
-        self.sound_filename = str(stream.read(filename_len), encoding='UTF8')
+        self.sound_filename = stream.read(filename_len).decode('UTF8')
         self.language_flags = struct.unpack('H', stream.read(2))[0]
         assert (self.language_flags <= 0xFFF), "unrecognized language flag"
         self.unk_bytes_5 = stream.read(6)
@@ -450,7 +462,7 @@ class LocalizedTextResource(Resource):
     @staticmethod
     def read_fixed_string(stream: BinaryIO):
         size = struct.unpack('H', stream.read(2))[0]
-        return str(stream.read(size), encoding='UTF8')
+        return stream.read(size).decode('UTF8')
 
     def __init__(self, stream: BinaryIO):
         Resource.__init__(self, stream)
@@ -490,9 +502,7 @@ class LootData(Resource):
         self.probability: float = struct.unpack('f', stream.read(4))[0]
         self.unkRef = Ref(stream)  # Never seems to be valid(?)
         ref_count = struct.unpack('I', stream.read(4))[0]
-        self.loot_item: List[Ref[LootItem]] = list()
-        for i in range(ref_count):
-            self.loot_item.append(Ref(stream))
+        self.loot_item: List[Ref[LootItem]] = [Ref(stream) for _ in range(ref_count)]
         self.quantity: int = struct.unpack('I', stream.read(4))[0]
         self.unk3: int = struct.unpack('b', stream.read(1))[0]
 
@@ -521,13 +531,18 @@ class LootSlot(Resource):
         Resource.__init__(self, stream)
         self.name = parse_hashed_string(stream)
         ref_count = struct.unpack('I', stream.read(4))[0]
-        self.loot_data: List[Ref[LootData]] = list()
-        for i in range(ref_count):
-            self.loot_data.append(Ref(stream))
+        self.loot_data: List[Ref[LootData]] = [Ref(stream) for _ in range(ref_count)]
         self.loot_slot_settings: Ref = Ref(stream)
 
     def __str__(self):
         return '{}: {}'.format(self.type, self.name)
+
+
+class ObjectCollection(Resource):
+    def __init__(self, stream: BinaryIO):
+        Resource.__init__(self, stream)
+        objects_count = struct.unpack('I', stream.read(4))[0]
+        self.objects: List[Ref[CreditsRow]] = [Ref(stream) for _ in range(objects_count)]
 
 
 # TODO: Unfinished
@@ -558,14 +573,9 @@ class SentenceGroupResource(Resource):
         Resource.__init__(self, stream)
         self.name = parse_hashed_string(stream)
         sentence_type = struct.unpack('I', stream.read(4))[0]
-        for x in self.ESentenceGroupType:
-            if x == sentence_type:
-                self.sentence_type: IntEnum = x
-        assert hasattr(self, 'sentence_type')
+        self.sentence_type = SentenceGroupResource.ESentenceGroupType(sentence_type)
         sentences_count = struct.unpack('I', stream.read(4))[0]
-        self.sentences: List[Ref[SentenceResource]] = list()
-        for i in range(sentences_count):
-            self.sentences.append(Ref(stream))
+        self.sentences: List[Ref[SentenceResource]] = [Ref(stream) for _ in range(sentences_count)]
 
     def __str__(self):
         return '{}: {}'.format(self.type, self.name)
@@ -582,19 +592,13 @@ class SpawnSetup(Resource):
         self.graph_program = Ref(stream)
         self.faction = Ref(stream)
         unk_refs_1_count = struct.unpack('I', stream.read(4))[0]
-        self.unk_refs_1: List[Ref] = list()
-        for i in range(unk_refs_1_count):
-            self.unk_refs_1.append(Ref(stream))
+        self.unk_refs_1: List[Ref] = [Ref(stream) for _ in range(unk_refs_1_count)]
         unk_refs_2_count = struct.unpack('I', stream.read(4))[0]
-        self.unk_refs_2: List[Ref] = list()
-        for i in range(unk_refs_2_count):
-            self.unk_refs_2.append(Ref(stream))
+        self.unk_refs_2: List[Ref] = [Ref(stream) for _ in range(unk_refs_2_count)]
         self.unk_ints = struct.unpack('iii', stream.read(12))
         self.unk_byte = struct.unpack('b', stream.read(1))
         unk_refs_3_count = struct.unpack('I', stream.read(4))[0]
-        self.unk_refs_3: List[Ref] = list()
-        for i in range(unk_refs_3_count):
-            self.unk_refs_3.append(Ref(stream))
+        self.unk_refs_3: List[Ref] = [Ref(stream) for _ in range(unk_refs_3_count)]
         self.inventory_collection = Ref(stream)
         self.combat_behavior = Ref(stream)
         self.humanoid_body_variant: [Ref[HumanoidBodyVariant], Ref[HumanoidBodyVariantGroup]] = Ref(stream)
@@ -618,9 +622,7 @@ class SpawnSetupGroup(Resource):
         self.unk2 = Ref(stream)
         assert self.unk2.type == 0
         unk_struct_count = struct.unpack('I', stream.read(4))[0]
-        self.unk_struct: List[SpawnSetupGroup.UnkStruct] = list()
-        for i in range(unk_struct_count):
-            self.unk_struct.append(self.UnkStruct(stream))
+        self.unk_structs = [SpawnSetupGroup.UnkStruct(stream) for _ in range(unk_struct_count)]
 
     def __str__(self):
         return '{}: {}'.format(self.type, self.name)
@@ -638,15 +640,12 @@ class ThrowableResource(Resource):
         self.data = stream.read(self.size + 12)
 
 
-# TODO: Unfinished
 class VoiceComponentResource(Resource):
     def __init__(self, stream: BinaryIO):
         Resource.__init__(self, stream)
         self.name = parse_hashed_string(stream)
         voice_signals_count = struct.unpack('I', stream.read(4))[0]
-        self.voice_signals: List[Ref[VoiceSignalsResource]] = list()
-        for ref in range(voice_signals_count):
-            self.voice_signals.append(Ref(stream))
+        self.voice_signals: List[Ref[VoiceSignalsResource]] = [Ref(stream) for _ in range(voice_signals_count)]
 
     def __str__(self):
         return '{}: {}'.format(self.type, self.name)
@@ -671,17 +670,16 @@ class VoiceSignalsResource(Resource):
         self.name = parse_hashed_string(stream)
         self.voice: Ref[VoiceResource] = Ref(stream)
         sentences_count = struct.unpack('I', stream.read(4))[0]
-        self.sentences: List[Ref[SentenceResource]] = list()
-        for i in range(sentences_count):
-            self.sentences.append(Ref(stream))
+        self.sentences: List[Ref[SentenceResource]] = [Ref(stream) for _ in range(sentences_count)]
 
     def __str__(self):
         return '{}: {}'.format(self.type, self.name)
 
 
 # TODO: There has to be a better way of splitting this out
-ps4_type_map = eval(open('ps4_type_map.txt', 'r').read())
-pc_type_map = eval(open('pc_type_map.txt', 'r').read())
+script_dir = os.path.dirname(__file__)
+ps4_type_map = eval(open(os.path.join(script_dir, r'ps4_type_map.txt'), 'r').read())
+pc_type_map = eval(open(os.path.join(script_dir, r'pc_type_map.txt'), 'r').read())
 
 
 def read_objects(in_file_name: str, out_dict: Dict[bytes, Resource], use_buffering=False):
@@ -716,14 +714,14 @@ def read_objects(in_file_name: str, out_dict: Dict[bytes, Resource], use_bufferi
                     stream.seek(parse_start_pos)
                     unknown_res = UnknownResource(stream)
                     raise Exception("{} {} in {} failed to parse"
-                          .format(type_info[0], str(binascii.hexlify(unknown_res.uuid), encoding='ASCII'),
+                          .format(type_info[0], binascii.hexlify(unknown_res.uuid).decode('ASCII'),
                                   in_file_name))
 
                 parse_end_pos = stream.tell()
                 read_count = (parse_end_pos - parse_start_pos)
                 if size + 12 != read_count:
                     print("{} {} in {} didn't match size, expected {}, read {}"
-                          .format(specific_res.type, str(binascii.hexlify(specific_res.uuid), encoding='ASCII'),
+                          .format(specific_res.type, binascii.hexlify(specific_res.uuid).decode('ASCII'),
                                   in_file_name, size + 12, read_count))
             else:
                 unknown_res = UnknownResource(stream)
@@ -734,4 +732,12 @@ def parse_hashed_string(stream: BinaryIO):
     size = struct.unpack('I', stream.read(4))[0]
     if size > 0:
         string_hash = stream.read(4)
-    return str(stream.read(size), encoding='ASCII')
+    return stream.read(size).decode('ASCII')
+
+
+def read_utf16_chars(stream: BinaryIO, length):
+    # Read one byte at a time
+    binary_chunks = iter(partial(stream.read, 1), "")
+    # Convert bytes into unicode code points
+    decoder = iterdecode(binary_chunks, 'utf_16_le')
+    return str().join(islice(decoder, length))
