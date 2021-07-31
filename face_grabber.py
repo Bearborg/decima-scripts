@@ -120,13 +120,15 @@ def get_names(setup: decima.SpawnSetup, script_objects):
             for voice_signal in x.voice_signals:
                 names.add(voice_signal.follow(script_objects)
                                       .voice.follow(script_objects)
-                                      .text.follow(script_objects).english)
+                                      .text.follow(script_objects).language[decima.ETextLanguages.English])
         if isinstance(x, decima.FocusTargetComponentResource):
-            names.add(x.focus_scanned_info.follow(script_objects).title.follow(script_objects).english)
+            names.add(x.focus_scanned_info
+                      .follow(script_objects).title
+                      .follow(script_objects).language[decima.ETextLanguages.English])
         if isinstance(x, decima.FocusScannedInfo):
-            names.add(x.title.follow(script_objects).english)
+            names.add(x.title.follow(script_objects).language[decima.ETextLanguages.English])
         if isinstance(x, decima.CharacterDescriptionComponentResource):
-            names.add(x.character_name.follow(script_objects).english)
+            names.add(x.character_name.follow(script_objects).language[decima.ETextLanguages.English])
     return names
 
 
