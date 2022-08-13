@@ -328,7 +328,7 @@ def dump_core(filename):
             out_path = os.path.join(os.path.split(filename)[0], obj.name + '.dds')
             assert out_path not in dumped_paths
             dump_texture(obj.image_data, out_path)
-            if not obj.name.startswith("SingleColorTexture_"):
+            if not (obj.name.startswith("SingleColorTexture_") or obj.name.startswith("RampTexture")):
                 dumped_paths.add(out_path)
         if isinstance(obj, decima.UITexture):
             print(f'{obj.type}: {obj.name_1}')

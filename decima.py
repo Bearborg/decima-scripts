@@ -637,7 +637,7 @@ class LocalizedSimpleSoundResource(Resource):
         # 9: at9
         # b: mp3
         # d: at9, TODO: Figure out what's different from 9
-        # f: ps4-only, TODO: Investigate
+        # f: aac, ps4-only
         assert(self.audio_type in [0x09, 0x0b, 0x0d, 0x0f]), f"unrecognized sound type {self.audio_type}"
         self.unk_bytes_6 = stream.read(4)
         self.sample_rate = struct.unpack('<I', stream.read(4))[0]
@@ -1056,48 +1056,13 @@ def read_objects(in_file_name: str, out_dict: Dict[bytes, Resource], use_bufferi
     type_map = ps4_type_map if is_ps4 else pc_type_map
 
     with open(in_file_name, 'rb') as in_file:
-        while True:
-            start_pos = in_file.tell()
-            if not in_file.read(1):
-                break
-            in_file.seek(start_pos)
-            type_hash, size = struct.unpack('<QI', in_file.read(12))
-            in_file.seek(start_pos)
-            if use_buffering:
-                stream = io.BytesIO(in_file.read(12 + size))
-            else:
-                stream = in_file
-            # check type map to see if we have a dedicated constructor
-            little_endian_type = '{0:X}'.format(type_hash)
-            type_info: List[Any] = ["Unknown"]
-            if little_endian_type in type_map:
-                type_info = type_map[little_endian_type]
-            if len(type_info) > 1:
-                parse_start_pos = stream.tell()
-
-                try:
-                    specific_res = type_info[1](stream)
-                    out_dict[specific_res.uuid] = specific_res
-                except:
-                    stream.seek(parse_start_pos)
-                    unknown_res = UnknownResource(stream)
-                    raise Exception("{} {} in {} failed to parse"
-                          .format(type_info[0], binascii.hexlify(unknown_res.uuid).decode('ASCII'),
-                                  in_file_name))
-
-                parse_end_pos = stream.tell()
-                read_count = (parse_end_pos - parse_start_pos)
-                if size + 12 != read_count:
-                    print("{} {} in {} didn't match size, expected {}, read {}"
-                          .format(specific_res.type, binascii.hexlify(specific_res.uuid).decode('ASCII'),
-                                  in_file_name, size + 12, read_count))
-            else:
-                unknown_res = UnknownResource(stream)
-                out_dict[unknown_res.uuid] = unknown_res
+        try:
+            return read_objects_from_stream(io.BytesIO(in_file.read()), type_map, out_dict, use_buffering)
+        except Exception as e:
+            raise Exception(f'Error in {in_file_name}: {e}')
 
 
 def read_objects_from_stream(in_file: io.BytesIO, type_map, out_dict: Dict[bytes, Resource], use_buffering=False):
-    # TODO: Refactor so that read_objects can use this
     while True:
         start_pos = in_file.tell()
         if not in_file.read(1):

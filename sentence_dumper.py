@@ -1,3 +1,4 @@
+import wave
 from typing import Optional
 import decima
 import os
@@ -155,10 +156,17 @@ def dump_audio(filename, language: decima.EAudioLanguages):
             else:
                 assert curr_sound.start >= prev_sound.start + prev_sound.size_1,\
                     f"Overlapping sound files, {filename} is likely broken"
-        ext = 'mp3' if sound.audio_type == 0x0b else 'at9'  # TODO: Handle PS4 audio types
+        ext = 'vgmstream'
+        if sound.audio_type == 0x0b:
+            ext = 'mp3'
+        elif sound.audio_type == 0x09 or sound.audio_type == 0x0d:
+            ext = 'at9'
+        elif sound.audio_type == 0x0f:  # ps4-only
+            ext = 'aac'
         sound_filename = os.path.join(sound_dir, f'{sentences[s].name}.{ext}')
         sound_stream.seek(sound.sound_info[language].start)
         sound_data = sound_stream.read(sound.sound_info[language].size_1)
+
         with open(sound_filename, 'wb') as sound_out_file:
             sound_out_file.write(sound_data)
 
