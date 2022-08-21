@@ -1,19 +1,21 @@
-import wave
 from typing import Optional
-import decima
+import pydecima
 import os
 import argparse
+
+from pydecima.enums import EAudioLanguages, ETextLanguages
+from pydecima.resources import LocalizedTextResource, SentenceGroupResource, SentenceResource, ObjectCollection
 
 
 def yaml_one_line_string(text: str, prefer_quotes=False):
     indicators = ('-', '?', ':', ',', '[', ']', '{', '}', '#', '&', '*', '!', '|', '>', '\'', '"', '%', '@', '`', ' ')
     if not prefer_quotes and ': ' not in text and '#' not in text and not text.startswith(indicators):  # plain string
         return text
-    else:  # double quoted string
+    else:  # double-quoted string
         return '"{}"'.format(text.replace("\\", "\\\\").replace('"', '\\"').replace('\n', '\\n'))
 
 
-def get_localized_text_yaml(text: decima.LocalizedTextResource, language: decima.ETextLanguages):
+def get_localized_text_yaml(text: LocalizedTextResource, language: ETextLanguages):
     out = ''
     lines = text.language[language].split('\n')
     if len(lines) > 1:
@@ -25,39 +27,39 @@ def get_localized_text_yaml(text: decima.LocalizedTextResource, language: decima
     return out
 
 
-def dump_simpletext(filename, language: decima.ETextLanguages):
+def dump_simpletext(filename, language: ETextLanguages):
     print(filename)
     script_objects = {}
-    decima.read_objects(filename, script_objects)
+    pydecima.reader.read_objects(filename, script_objects)
 
     out = ''
 
-    collections = [v for v in script_objects.values() if isinstance(v, decima.ObjectCollection)]
+    collections = [v for v in script_objects.values() if isinstance(v, ObjectCollection)]
     assert len(collections) <= 1
     if len(collections) == 1:
         texts = map(lambda v: v.follow(script_objects), collections[0].objects)
     else:
         texts = script_objects.values()
     for text in texts:
-        if not isinstance(text, decima.LocalizedTextResource):
+        if not isinstance(text, LocalizedTextResource):
             print(f'{text} in {filename} is not a LocalizedTextResource, skipping')
             continue
-        text: decima.LocalizedTextResource
+        text: LocalizedTextResource
         out += get_localized_text_yaml(text, language)
 
     with open(filename + '.yml', 'w', encoding='utf8') as out_file:
         out_file.write(out)
 
 
-def dump_sentences(filename, language: decima.ETextLanguages):
+def dump_sentences(filename, language: ETextLanguages):
     script_objects = {}
-    decima.read_objects(filename, script_objects)
+    pydecima.reader.read_objects(filename, script_objects)
 
     out = ''
     visited_uuids = set()
     file_objects = script_objects.copy()
 
-    groups = [n for n in script_objects.values() if isinstance(n, decima.SentenceGroupResource)]
+    groups = [n for n in script_objects.values() if isinstance(n, SentenceGroupResource)]
     groups.sort(key=lambda group: group.name)
 
     for x in groups:
@@ -74,8 +76,8 @@ def dump_sentences(filename, language: decima.ETextLanguages):
             voice_str = '<No voice name>'
             if voice_name.language[language] != '':
                 voice_str = voice_name.language[language]
-            elif voice_name.language[decima.ETextLanguages.English] != '':
-                voice_str = voice_name.language[decima.ETextLanguages.English]
+            elif voice_name.language[ETextLanguages.English] != '':
+                voice_str = voice_name.language[ETextLanguages.English]
             out += '    {}: {}\n'.format(
                 yaml_one_line_string(voice_str),
                 yaml_one_line_string(text.language[language], True) if sent.text.type != 0 else '<No subtitle>'
@@ -89,8 +91,8 @@ def dump_sentences(filename, language: decima.ETextLanguages):
                 found_orphans = True
                 out += '- Orphaned data:\n'
             assert(t.type == 'LocalizedTextResource')
-            t: decima.LocalizedTextResource
-            loc = t.language[language] if t.language[language] != "" else t.language[decima.ETextLanguages.English]
+            t: LocalizedTextResource
+            loc = t.language[language] if t.language[language] != "" else t.language[ETextLanguages.English]
             out += f'  - {yaml_one_line_string(loc, True)}\n'
 
     with open(filename + '.yml', 'w', encoding='utf8') as out_file:
@@ -98,7 +100,7 @@ def dump_sentences(filename, language: decima.ETextLanguages):
 
 
 def dump_file(filename: str, do_audio: bool, do_text: bool,
-              audio_lang: decima.EAudioLanguages, text_lang: decima.ETextLanguages):
+              audio_lang: EAudioLanguages, text_lang: ETextLanguages):
     if os.stat(filename).st_size > 0:  # Ignore empty files
         f = os.path.split(filename)[-1]
         if f == "simpletext.core":
@@ -116,18 +118,18 @@ def dump_file(filename: str, do_audio: bool, do_text: bool,
 
 
 def dump_recursive(directory: str, do_audio: bool, do_text: bool,
-                   audio_lang: decima.EAudioLanguages, text_lang: decima.ETextLanguages):
+                   audio_lang: EAudioLanguages, text_lang: ETextLanguages):
     for root, directories, filenames in os.walk(directory):
         for f in filenames:
             dump_file(os.path.join(root, f), do_audio, do_text, audio_lang, text_lang)
 
 
-def dump_audio(filename, language: decima.EAudioLanguages):
+def dump_audio(filename, language: EAudioLanguages):
     script_objects = {}
-    decima.read_objects(filename, script_objects)
-    sentences = [x for x in script_objects.values() if isinstance(x, decima.SentenceResource) and
+    pydecima.reader.read_objects(filename, script_objects)
+    sentences = [x for x in script_objects.values() if isinstance(x, SentenceResource) and
                  x.sound.follow(script_objects).sound_info[language] is not None]
-    missing_sentences = [x for x in script_objects.values() if isinstance(x, decima.SentenceResource) and
+    missing_sentences = [x for x in script_objects.values() if isinstance(x, SentenceResource) and
                          x.sound.follow(script_objects).sound_info[language] is None]
     for s in missing_sentences:
         print(f'{s.name} has no audio in language {language.name}, skipping')
@@ -174,22 +176,22 @@ def dump_audio(filename, language: decima.EAudioLanguages):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-l", "--language", type=str, help="The language to output text/audio in.",
-                        choices=[lang.name for lang in decima.ETextLanguages], default='English')
+                        choices=[lang.name for lang in ETextLanguages], default='English')
     parser.add_argument("-d", "--dump", type=str.lower, help="Which type of output to dump; text, audio, or all.",
                         choices=['text', 'audio', 'all'], default='all')
     parser.add_argument("path", type=str,
                         help="Path to a sentences.core/simpletext.core file, or a directory to recursively dump from.")
     args = parser.parse_args()
-    text_language: decima.ETextLanguages = getattr(decima.ETextLanguages, args.language)
+    text_language: ETextLanguages = getattr(ETextLanguages, args.language)
 
     language_lookup = {
-        'Portuguese': decima.EAudioLanguages.Portugese,
-        'LatinAmericanSpanish': decima.EAudioLanguages.LatAmSp,
-        'BrazilianPortuguese': decima.EAudioLanguages.LatAmPor
+        'Portuguese': EAudioLanguages.Portugese,
+        'LatinAmericanSpanish': EAudioLanguages.LatAmSp,
+        'BrazilianPortuguese': EAudioLanguages.LatAmPor
     }
-    audio_language: Optional[decima.EAudioLanguages]
-    if hasattr(decima.EAudioLanguages, text_language.name):
-        audio_language = getattr(decima.EAudioLanguages, text_language.name)
+    audio_language: Optional[EAudioLanguages]
+    if hasattr(EAudioLanguages, text_language.name):
+        audio_language = getattr(EAudioLanguages, text_language.name)
     elif text_language.name in language_lookup:
         audio_language = language_lookup[text_language.name]
     else:
@@ -201,6 +203,9 @@ def main():
     if audio and audio_language is None:
         print(f'Language {text_language.name} does not have audio; disabling audio dumping.')
         audio = False
+
+    game_root_file = os.path.join(os.path.dirname(__file__), r'hzd_root_path.txt')
+    pydecima.reader.set_globals(_game_root_file=game_root_file, _decima_version='HZDPC')
 
     if os.path.isfile(args.path):
         dump_file(args.path, audio, text, audio_language, text_language)

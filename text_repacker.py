@@ -2,27 +2,30 @@ import io
 import os
 import csv
 import struct
-import decima
+import pydecima
 import binascii
 import argparse
 from typing import Dict
+from pydecima.enums import ETextLanguages
+from pydecima.resources import LocalizedTextResource
+from pydecima.type_maps import get_type_map
 
 simpletext_header = ['UUID', 'Text', 'Translation']
-language = decima.ETextLanguages.English
+language = ETextLanguages.English
 
 
 def dump_core(core_path: str, csv_path: str):
     script_objects = {}
-    decima.read_objects(core_path, script_objects)
+    pydecima.reader.read_objects(core_path, script_objects)
     with open(csv_path, 'w', newline='', encoding='utf8') as out_file:
         out = csv.writer(out_file, quoting=csv.QUOTE_ALL)
         out.writerow(simpletext_header)
         for obj in script_objects.values():
-            if isinstance(obj, decima.LocalizedTextResource):
+            if isinstance(obj, LocalizedTextResource):
                 out.writerow([binascii.hexlify(obj.uuid).decode('ASCII'), obj.language[language], ''])
 
 
-def serialize_localized_text(text: decima.LocalizedTextResource):
+def serialize_localized_text(text: LocalizedTextResource):
     output = text.uuid
 
     for lang in text.language:
@@ -61,11 +64,12 @@ def repack_core(core_path: str, csv_path: str):
             obj_uuid = orig_core.read(16)
             orig_core.read(obj_size)
 
-            if decima.pc_type_map[str_type][0] == 'LocalizedTextResource' and obj_uuid in text_map:
+            type_map = get_type_map(pydecima.reader.decima_version)
+            if type_map[str_type] == 'LocalizedTextResource' and obj_uuid in text_map:
                 script_objects = {}
                 orig_core.seek(start)
                 resource_stream = io.BytesIO(orig_core.read(obj_size + 12))
-                decima.read_objects_from_stream(resource_stream, decima.pc_type_map, script_objects)
+                pydecima.reader.read_objects_from_stream(resource_stream, script_objects)
                 assert(len(script_objects) == 1)
                 text = script_objects[obj_uuid]
                 text.language[language] = text_map[obj_uuid]
@@ -79,12 +83,16 @@ def repack_core(core_path: str, csv_path: str):
 
 def main():
     parser = argparse.ArgumentParser()
-    group = parser.add_mutually_exclusive_group()
+    group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('-d', '--dump', type=str,
                        help="Path to a core file to dump.")
     group.add_argument('-r', '--repack', type=str,
                        help="Path to a core file to repack.")
     args = parser.parse_args()
+
+    game_root_file = os.path.join(os.path.dirname(__file__), r'hzd_root_path.txt')
+    pydecima.reader.set_globals(_game_root_file=game_root_file, _decima_version='HZDPC')
+
     if args.dump:
         csv_path = os.path.splitext(args.dump)[0] + '.csv'
         assert os.path.isfile(args.dump)

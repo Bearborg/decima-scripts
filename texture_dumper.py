@@ -1,9 +1,12 @@
-import decima
+import pydecima
 import os
 import struct
 import argparse
 from typing import Dict, List, Set
 from enum import IntEnum
+from pydecima.resources import TextureSet, Resource, Texture, UITexture
+from pydecima.enums import EPixelFormat
+from pydecima.resources.structs.ImageStruct import ImageStruct
 
 
 class DXGI(IntEnum):
@@ -129,88 +132,88 @@ class DXGI(IntEnum):
     DXGI_FORMAT_FORCE_UINT = 0xffffffff
 
 
-format_map: Dict[decima.ImageStruct.ImageFormat, DXGI] = {
-    decima.ImageStruct.ImageFormat.INVALID: DXGI.DXGI_FORMAT_UNKNOWN,
-    # decima.ImageStruct.ImageFormat.RGBA_5551: ,
-    # decima.ImageStruct.ImageFormat.RGBA_5551_REV: ,
-    # decima.ImageStruct.ImageFormat.RGBA_4444: ,
-    # decima.ImageStruct.ImageFormat.RGBA_4444_REV: ,
-    # decima.ImageStruct.ImageFormat.RGB_888_32: ,
-    # decima.ImageStruct.ImageFormat.RGB_888_32_REV: ,
-    # decima.ImageStruct.ImageFormat.RGB_888: ,
-    # decima.ImageStruct.ImageFormat.RGB_888_REV: ,
-    # decima.ImageStruct.ImageFormat.RGB_565: ,
-    # decima.ImageStruct.ImageFormat.RGB_565_REV: ,
-    # decima.ImageStruct.ImageFormat.RGB_555: ,
-    # decima.ImageStruct.ImageFormat.RGB_555_REV: ,
-    decima.ImageStruct.ImageFormat.RGBA_8888: DXGI.DXGI_FORMAT_R8G8B8A8_TYPELESS,
-    # decima.ImageStruct.ImageFormat.RGBA_8888_REV: ,
-    # decima.ImageStruct.ImageFormat.RGBE_REV: ,
-    decima.ImageStruct.ImageFormat.RGBA_FLOAT_32: DXGI.DXGI_FORMAT_R32G32B32A32_FLOAT,
-    decima.ImageStruct.ImageFormat.RGB_FLOAT_32: DXGI.DXGI_FORMAT_R32G32B32_FLOAT,
-    decima.ImageStruct.ImageFormat.RG_FLOAT_32: DXGI.DXGI_FORMAT_R32G32_FLOAT,
-    decima.ImageStruct.ImageFormat.R_FLOAT_32: DXGI.DXGI_FORMAT_R32_FLOAT,
-    decima.ImageStruct.ImageFormat.RGBA_FLOAT_16: DXGI.DXGI_FORMAT_R16G16B16A16_FLOAT,
-    # decima.ImageStruct.ImageFormat.RGB_FLOAT_16: ,
-    decima.ImageStruct.ImageFormat.RG_FLOAT_16: DXGI.DXGI_FORMAT_R16G16_FLOAT,
-    decima.ImageStruct.ImageFormat.R_FLOAT_16: DXGI.DXGI_FORMAT_R16_FLOAT,
-    # decima.ImageStruct.ImageFormat.RGBA_UNORM_32: ,
-    # decima.ImageStruct.ImageFormat.RG_UNORM_32: ,
-    # decima.ImageStruct.ImageFormat.R_UNORM_32: ,
-    decima.ImageStruct.ImageFormat.RGBA_UNORM_16: DXGI.DXGI_FORMAT_R16G16B16A16_UNORM,
-    decima.ImageStruct.ImageFormat.RG_UNORM_16: DXGI.DXGI_FORMAT_R16G16_UNORM,
-    decima.ImageStruct.ImageFormat.R_UNORM_16: DXGI.DXGI_FORMAT_R16_UNORM,  # Old: INTENSITY_16
-    decima.ImageStruct.ImageFormat.RGBA_UNORM_8: DXGI.DXGI_FORMAT_R8G8B8A8_UNORM,
-    decima.ImageStruct.ImageFormat.RG_UNORM_8: DXGI.DXGI_FORMAT_R8G8_UNORM,
-    decima.ImageStruct.ImageFormat.R_UNORM_8: DXGI.DXGI_FORMAT_R8_UNORM,  # Old: INTENSITY_8
-    # decima.ImageStruct.ImageFormat.RGBA_NORM_32: ,
-    # decima.ImageStruct.ImageFormat.RG_NORM_32: ,
-    # decima.ImageStruct.ImageFormat.R_NORM_32: ,
-    decima.ImageStruct.ImageFormat.RGBA_NORM_16: DXGI.DXGI_FORMAT_R16G16B16A16_SNORM,
-    decima.ImageStruct.ImageFormat.RG_NORM_16: DXGI.DXGI_FORMAT_R16G16_SNORM,
-    decima.ImageStruct.ImageFormat.R_NORM_16: DXGI.DXGI_FORMAT_R16_SNORM,
-    decima.ImageStruct.ImageFormat.RGBA_NORM_8: DXGI.DXGI_FORMAT_R8G8B8A8_SNORM,
-    decima.ImageStruct.ImageFormat.RG_NORM_8: DXGI.DXGI_FORMAT_R8G8_SNORM,
-    decima.ImageStruct.ImageFormat.R_NORM_8: DXGI.DXGI_FORMAT_R8_SNORM,
-    decima.ImageStruct.ImageFormat.RGBA_UINT_32: DXGI.DXGI_FORMAT_R32G32B32A32_UINT,
-    decima.ImageStruct.ImageFormat.RG_UINT_32: DXGI.DXGI_FORMAT_R32G32_UINT,
-    decima.ImageStruct.ImageFormat.R_UINT_32: DXGI.DXGI_FORMAT_R32_UINT,
-    decima.ImageStruct.ImageFormat.RGBA_UINT_16: DXGI.DXGI_FORMAT_R16G16B16A16_UINT,
-    decima.ImageStruct.ImageFormat.RG_UINT_16: DXGI.DXGI_FORMAT_R16G16_UINT,
-    decima.ImageStruct.ImageFormat.R_UINT_16: DXGI.DXGI_FORMAT_R16_UINT,
-    decima.ImageStruct.ImageFormat.RGBA_UINT_8: DXGI.DXGI_FORMAT_R8G8B8A8_UINT,
-    decima.ImageStruct.ImageFormat.RG_UINT_8: DXGI.DXGI_FORMAT_R8G8_UINT,
-    decima.ImageStruct.ImageFormat.R_UINT_8: DXGI.DXGI_FORMAT_R8_UINT,
-    decima.ImageStruct.ImageFormat.RGBA_INT_32: DXGI.DXGI_FORMAT_R32G32B32A32_SINT,
-    decima.ImageStruct.ImageFormat.RG_INT_32: DXGI.DXGI_FORMAT_R32G32_SINT,
-    decima.ImageStruct.ImageFormat.R_INT_32: DXGI.DXGI_FORMAT_R32_SINT,
-    decima.ImageStruct.ImageFormat.RGBA_INT_16: DXGI.DXGI_FORMAT_R16G16B16A16_SINT,
-    decima.ImageStruct.ImageFormat.RG_INT_16: DXGI.DXGI_FORMAT_R16G16_SINT,
-    decima.ImageStruct.ImageFormat.R_INT_16: DXGI.DXGI_FORMAT_R16_SINT,
-    decima.ImageStruct.ImageFormat.RGBA_INT_8: DXGI.DXGI_FORMAT_R8G8B8A8_SINT,
-    decima.ImageStruct.ImageFormat.RG_INT_8: DXGI.DXGI_FORMAT_R8G8_SINT,
-    decima.ImageStruct.ImageFormat.R_INT_8: DXGI.DXGI_FORMAT_R8_SINT,
-    decima.ImageStruct.ImageFormat.RGB_FLOAT_11_11_10: DXGI.DXGI_FORMAT_R11G11B10_FLOAT,
-    decima.ImageStruct.ImageFormat.RGBA_UNORM_10_10_10_2: DXGI.DXGI_FORMAT_R10G10B10A2_UNORM,
-    # decima.ImageStruct.ImageFormat.RGB_UNORM_11_11_10: ,
-    decima.ImageStruct.ImageFormat.DEPTH_FLOAT_32_STENCIL_8: DXGI.DXGI_FORMAT_D32_FLOAT_S8X24_UINT,  # TODO: Confirm
-    decima.ImageStruct.ImageFormat.DEPTH_FLOAT_32_STENCIL_0: DXGI.DXGI_FORMAT_D32_FLOAT,
-    decima.ImageStruct.ImageFormat.DEPTH_24_STENCIL_8: DXGI.DXGI_FORMAT_D24_UNORM_S8_UINT,  # TODO: Confirm
-    decima.ImageStruct.ImageFormat.DEPTH_16_STENCIL_0: DXGI.DXGI_FORMAT_D16_UNORM,  # TODO: Confirm
-    decima.ImageStruct.ImageFormat.BC1: DXGI.DXGI_FORMAT_BC1_UNORM,  # Old: S3TC1
-    decima.ImageStruct.ImageFormat.BC2: DXGI.DXGI_FORMAT_BC2_UNORM,  # Old: S3TC3
-    decima.ImageStruct.ImageFormat.BC3: DXGI.DXGI_FORMAT_BC3_UNORM,  # Old: S3TC5
-    decima.ImageStruct.ImageFormat.BC4U: DXGI.DXGI_FORMAT_BC4_UNORM,
-    decima.ImageStruct.ImageFormat.BC4S: DXGI.DXGI_FORMAT_BC4_SNORM,
-    decima.ImageStruct.ImageFormat.BC5U: DXGI.DXGI_FORMAT_BC5_UNORM,
-    decima.ImageStruct.ImageFormat.BC5S: DXGI.DXGI_FORMAT_BC5_SNORM,
-    decima.ImageStruct.ImageFormat.BC6U: DXGI.DXGI_FORMAT_BC6H_UF16,
-    decima.ImageStruct.ImageFormat.BC6S: DXGI.DXGI_FORMAT_BC6H_SF16,
-    decima.ImageStruct.ImageFormat.BC7: DXGI.DXGI_FORMAT_BC7_UNORM
+format_map: Dict[EPixelFormat, DXGI] = {
+    EPixelFormat.INVALID: DXGI.DXGI_FORMAT_UNKNOWN,
+    # decima.EPixelFormat.RGBA_5551: ,
+    # decima.EPixelFormat.RGBA_5551_REV: ,
+    # decima.EPixelFormat.RGBA_4444: ,
+    # decima.EPixelFormat.RGBA_4444_REV: ,
+    # decima.EPixelFormat.RGB_888_32: ,
+    # decima.EPixelFormat.RGB_888_32_REV: ,
+    # decima.EPixelFormat.RGB_888: ,
+    # decima.EPixelFormat.RGB_888_REV: ,
+    # decima.EPixelFormat.RGB_565: ,
+    # decima.EPixelFormat.RGB_565_REV: ,
+    # decima.EPixelFormat.RGB_555: ,
+    # decima.EPixelFormat.RGB_555_REV: ,
+    EPixelFormat.RGBA_8888: DXGI.DXGI_FORMAT_R8G8B8A8_TYPELESS,
+    # decima.EPixelFormat.RGBA_8888_REV: ,
+    # decima.EPixelFormat.RGBE_REV: ,
+    EPixelFormat.RGBA_FLOAT_32: DXGI.DXGI_FORMAT_R32G32B32A32_FLOAT,
+    EPixelFormat.RGB_FLOAT_32: DXGI.DXGI_FORMAT_R32G32B32_FLOAT,
+    EPixelFormat.RG_FLOAT_32: DXGI.DXGI_FORMAT_R32G32_FLOAT,
+    EPixelFormat.R_FLOAT_32: DXGI.DXGI_FORMAT_R32_FLOAT,
+    EPixelFormat.RGBA_FLOAT_16: DXGI.DXGI_FORMAT_R16G16B16A16_FLOAT,
+    # decima.EPixelFormat.RGB_FLOAT_16: ,
+    EPixelFormat.RG_FLOAT_16: DXGI.DXGI_FORMAT_R16G16_FLOAT,
+    EPixelFormat.R_FLOAT_16: DXGI.DXGI_FORMAT_R16_FLOAT,
+    # decima.EPixelFormat.RGBA_UNORM_32: ,
+    # decima.EPixelFormat.RG_UNORM_32: ,
+    # decima.EPixelFormat.R_UNORM_32: ,
+    EPixelFormat.RGBA_UNORM_16: DXGI.DXGI_FORMAT_R16G16B16A16_UNORM,
+    EPixelFormat.RG_UNORM_16: DXGI.DXGI_FORMAT_R16G16_UNORM,
+    EPixelFormat.R_UNORM_16: DXGI.DXGI_FORMAT_R16_UNORM,  # Old: INTENSITY_16
+    EPixelFormat.RGBA_UNORM_8: DXGI.DXGI_FORMAT_R8G8B8A8_UNORM,
+    EPixelFormat.RG_UNORM_8: DXGI.DXGI_FORMAT_R8G8_UNORM,
+    EPixelFormat.R_UNORM_8: DXGI.DXGI_FORMAT_R8_UNORM,  # Old: INTENSITY_8
+    # decima.EPixelFormat.RGBA_NORM_32: ,
+    # decima.EPixelFormat.RG_NORM_32: ,
+    # decima.EPixelFormat.R_NORM_32: ,
+    EPixelFormat.RGBA_NORM_16: DXGI.DXGI_FORMAT_R16G16B16A16_SNORM,
+    EPixelFormat.RG_NORM_16: DXGI.DXGI_FORMAT_R16G16_SNORM,
+    EPixelFormat.R_NORM_16: DXGI.DXGI_FORMAT_R16_SNORM,
+    EPixelFormat.RGBA_NORM_8: DXGI.DXGI_FORMAT_R8G8B8A8_SNORM,
+    EPixelFormat.RG_NORM_8: DXGI.DXGI_FORMAT_R8G8_SNORM,
+    EPixelFormat.R_NORM_8: DXGI.DXGI_FORMAT_R8_SNORM,
+    EPixelFormat.RGBA_UINT_32: DXGI.DXGI_FORMAT_R32G32B32A32_UINT,
+    EPixelFormat.RG_UINT_32: DXGI.DXGI_FORMAT_R32G32_UINT,
+    EPixelFormat.R_UINT_32: DXGI.DXGI_FORMAT_R32_UINT,
+    EPixelFormat.RGBA_UINT_16: DXGI.DXGI_FORMAT_R16G16B16A16_UINT,
+    EPixelFormat.RG_UINT_16: DXGI.DXGI_FORMAT_R16G16_UINT,
+    EPixelFormat.R_UINT_16: DXGI.DXGI_FORMAT_R16_UINT,
+    EPixelFormat.RGBA_UINT_8: DXGI.DXGI_FORMAT_R8G8B8A8_UINT,
+    EPixelFormat.RG_UINT_8: DXGI.DXGI_FORMAT_R8G8_UINT,
+    EPixelFormat.R_UINT_8: DXGI.DXGI_FORMAT_R8_UINT,
+    EPixelFormat.RGBA_INT_32: DXGI.DXGI_FORMAT_R32G32B32A32_SINT,
+    EPixelFormat.RG_INT_32: DXGI.DXGI_FORMAT_R32G32_SINT,
+    EPixelFormat.R_INT_32: DXGI.DXGI_FORMAT_R32_SINT,
+    EPixelFormat.RGBA_INT_16: DXGI.DXGI_FORMAT_R16G16B16A16_SINT,
+    EPixelFormat.RG_INT_16: DXGI.DXGI_FORMAT_R16G16_SINT,
+    EPixelFormat.R_INT_16: DXGI.DXGI_FORMAT_R16_SINT,
+    EPixelFormat.RGBA_INT_8: DXGI.DXGI_FORMAT_R8G8B8A8_SINT,
+    EPixelFormat.RG_INT_8: DXGI.DXGI_FORMAT_R8G8_SINT,
+    EPixelFormat.R_INT_8: DXGI.DXGI_FORMAT_R8_SINT,
+    EPixelFormat.RGB_FLOAT_11_11_10: DXGI.DXGI_FORMAT_R11G11B10_FLOAT,
+    EPixelFormat.RGBA_UNORM_10_10_10_2: DXGI.DXGI_FORMAT_R10G10B10A2_UNORM,
+    # decima.EPixelFormat.RGB_UNORM_11_11_10: ,
+    EPixelFormat.DEPTH_FLOAT_32_STENCIL_8: DXGI.DXGI_FORMAT_D32_FLOAT_S8X24_UINT,  # TODO: Confirm
+    EPixelFormat.DEPTH_FLOAT_32_STENCIL_0: DXGI.DXGI_FORMAT_D32_FLOAT,
+    EPixelFormat.DEPTH_24_STENCIL_8: DXGI.DXGI_FORMAT_D24_UNORM_S8_UINT,  # TODO: Confirm
+    EPixelFormat.DEPTH_16_STENCIL_0: DXGI.DXGI_FORMAT_D16_UNORM,  # TODO: Confirm
+    EPixelFormat.BC1: DXGI.DXGI_FORMAT_BC1_UNORM,  # Old: S3TC1
+    EPixelFormat.BC2: DXGI.DXGI_FORMAT_BC2_UNORM,  # Old: S3TC3
+    EPixelFormat.BC3: DXGI.DXGI_FORMAT_BC3_UNORM,  # Old: S3TC5
+    EPixelFormat.BC4U: DXGI.DXGI_FORMAT_BC4_UNORM,
+    EPixelFormat.BC4S: DXGI.DXGI_FORMAT_BC4_SNORM,
+    EPixelFormat.BC5U: DXGI.DXGI_FORMAT_BC5_UNORM,
+    EPixelFormat.BC5S: DXGI.DXGI_FORMAT_BC5_SNORM,
+    EPixelFormat.BC6U: DXGI.DXGI_FORMAT_BC6H_UF16,
+    EPixelFormat.BC6S: DXGI.DXGI_FORMAT_BC6H_SF16,
+    EPixelFormat.BC7: DXGI.DXGI_FORMAT_BC7_UNORM
 }
 
 
-def build_dds_header(texture: decima.ImageStruct) -> bytes:
+def build_dds_header(texture: ImageStruct) -> bytes:
     header_data = bytes()
 
     flags = b'\x07\x10\x00\x00'  # TODO
@@ -263,14 +266,13 @@ def build_dds_header(texture: decima.ImageStruct) -> bytes:
     return header_data
 
 
-def dump_texture(data: decima.ImageStruct, out_path: str):
+def dump_texture(data: ImageStruct, out_path: str):
     print(f'  {os.path.split(out_path)[1]} {data.image_format.name}')
     stream_data = bytes()
     if hasattr(data, "size_of_stream") and data.size_of_stream > 0:
         cache_path = data.cache_string
         assert cache_path.startswith("cache:")
-        game_root = decima.game_root_ps4 if decima.is_ps4 else decima.game_root_pc
-        stream_path = os.path.join(game_root, cache_path[6:])
+        stream_path = os.path.join(pydecima.reader.game_root, cache_path[6:])
         assert os.path.isfile(stream_path), f"Missing stream file {stream_path}"
         stream_file = open(stream_path, 'rb')
         stream_file.seek(data.stream_start)
@@ -282,8 +284,8 @@ def dump_texture(data: decima.ImageStruct, out_path: str):
 
 
 def print_channel_details(
-        channel_details: List[decima.TextureSet.TextureDetails.ChannelDetails],
-        sources: List[decima.TextureSet.SourceDetails]):
+        channel_details: List[TextureSet.TextureDetails.ChannelDetails],
+        sources: List[TextureSet.SourceDetails]):
     channels = 'RGBA'
     maps = dict()
     for i, channel in enumerate(channel_details):
@@ -301,14 +303,14 @@ def print_channel_details(
 
 def dump_core(filename):
     print(filename)
-    script_objects: Dict[bytes, decima.Resource] = {}
-    decima.read_objects(filename, script_objects)
+    script_objects: Dict[bytes, Resource] = {}
+    pydecima.reader.read_objects(filename, script_objects)
     dumped_textures: Set[bytes] = set()
     dumped_paths: Set[str] = set()
 
     # Look for any texture sets and dump their contents
     for obj in script_objects.values():
-        if isinstance(obj, decima.TextureSet):
+        if isinstance(obj, TextureSet):
             print(f'{obj.type}: {obj.name}')
             for tex in obj.textures:
                 tex_res = tex.texture.follow(script_objects)
@@ -323,14 +325,14 @@ def dump_core(filename):
     # Second pass through, looking for textures _not_ in sets now
     for uuid in script_objects:
         obj = script_objects[uuid]
-        if isinstance(obj, decima.Texture) and uuid not in dumped_textures:
+        if isinstance(obj, Texture) and uuid not in dumped_textures:
             print(f'{obj.type}: {obj.name}')
             out_path = os.path.join(os.path.split(filename)[0], obj.name + '.dds')
             assert out_path not in dumped_paths
             dump_texture(obj.image_data, out_path)
             if not (obj.name.startswith("SingleColorTexture_") or obj.name.startswith("RampTexture")):
                 dumped_paths.add(out_path)
-        if isinstance(obj, decima.UITexture):
+        if isinstance(obj, UITexture):
             print(f'{obj.type}: {obj.name_1}')
             out_path = os.path.join(os.path.split(filename)[0], obj.name_1 + '.dds')
             assert out_path not in dumped_paths, f"Name conflict: {obj.name_1}.dds already dumped"
@@ -355,6 +357,10 @@ def main():
     parser.add_argument("path", type=str,
                         help="Path to a .core file containing textures, or a directory to recursively dump from.")
     args = parser.parse_args()
+
+    game_root_file = os.path.join(os.path.dirname(__file__), r'hzd_root_path.txt')
+    pydecima.reader.set_globals(_game_root_file=game_root_file, _decima_version='HZDPC')
+
     if os.path.isfile(args.path) and os.path.splitext(args.path)[1] == ".core":
         dump_core(args.path)
     elif os.path.isdir(args.path):

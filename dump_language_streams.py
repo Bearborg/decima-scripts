@@ -2,10 +2,12 @@ import invoke
 import os
 import sys
 import argparse
-from decima import game_root_pc
+import pydecima
+from language_stream_contents import language_stream_contents
 
 script_dir = os.path.dirname(__file__)
-stream_files_dict = eval(open(os.path.join(script_dir, r'language_stream_contents.txt'), 'r').read())
+game_root_file = os.path.join(os.path.dirname(__file__), r'hzd_root_path.txt')
+pydecima.reader.set_globals(_game_root_file=game_root_file)
 
 
 def extract_file(bin_file, filename, out_file, deci_exp):
@@ -14,15 +16,15 @@ def extract_file(bin_file, filename, out_file, deci_exp):
 
 def dump_bins(archive, deci_exp):
     bin_file = os.path.split(archive)[1]
-    filenames = stream_files_dict[bin_file]
+    filenames = language_stream_contents[bin_file]
     for i in range(len(filenames)):
-        file = filenames[i]
-        out_file = os.path.join(game_root_pc, file)
+        file = 'localized/sentences/' + filenames[i]
+        out_file = os.path.join(pydecima.reader.game_root, file)
         try:
             print(f'{bin_file} {i + 1}/{len(filenames)}')
             extract_file(archive, file, out_file, deci_exp)
-        except:
-            print(f"failed to extract: {out_file}", file=sys.stderr)
+        except Exception as e:
+            print(f"failed to extract {out_file} with error {e}", file=sys.stderr)
 
 
 def main():
@@ -36,7 +38,7 @@ def main():
         print(f"Provided path to Decima Explorer is not an executable file")
         exit(1)
     filename = os.path.split(args.path_to_bin)[1]
-    if filename not in stream_files_dict:
+    if filename not in language_stream_contents:
         print(f"Filename {filename} is not a recognized HZD language file")
         exit(1)
     print(f"Dumping bin {filename}")

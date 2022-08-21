@@ -1,9 +1,11 @@
 import argparse
-import decima
+import pydecima
 import struct
 import os
 from pathlib import PurePath
 from typing import Dict
+
+from pydecima.resources import PrefetchList
 
 
 class PrefetchPathInfo:
@@ -14,19 +16,19 @@ class PrefetchPathInfo:
 
 def regenerate_prefetch(prefetch_file: str, output_file: str):
     script_objects = {}
-    decima.read_objects(prefetch_file, script_objects)
+    pydecima.reader.read_objects(prefetch_file, script_objects)
     assert (len(script_objects) == 1)
-    prefetch: decima.PrefetchList = next(iter(script_objects.values()))
+    prefetch: PrefetchList = next(iter(script_objects.values()))
     # Note: In Python versions <3.6, order may be incorrect
     prefetch_dict: Dict[str, PrefetchPathInfo] = {path.text: PrefetchPathInfo(path.text_hash, prefetch.sizes[i])
                                                   for i, path in enumerate(prefetch.paths)}
 
-    for root, dirs, files in os.walk(decima.game_root_pc):
+    for root, dirs, files in os.walk(pydecima.reader.game_root):
         for file in files:
             if not file.endswith('.core'):
                 continue
             full_path = os.path.join(root, file)
-            relative_path = os.path.relpath(full_path, decima.game_root_pc)
+            relative_path = os.path.relpath(full_path, pydecima.reader.game_root)
             path_without_ext = os.path.splitext(relative_path)[0]
             final_path = PurePath(path_without_ext).as_posix()
             if final_path in prefetch_dict:
@@ -61,6 +63,8 @@ def main():
     parser.add_argument('-o', '--output', type=str, required=True,
                         help="Path for updated prefetch file to be written.")
     args = parser.parse_args()
+    game_root_file = os.path.join(os.path.dirname(__file__), r'hzd_root_path.txt')
+    pydecima.reader.set_globals(_game_root_file=game_root_file, _decima_version='HZDPC')
     regenerate_prefetch(args.input, args.output)
 
 

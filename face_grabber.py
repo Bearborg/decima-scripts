@@ -1,7 +1,12 @@
 from typing import List, Set
-import decima
+import pydecima
+from pydecima.resources import CharacterDescriptionComponentResource, FacialAnimationComponentResource,\
+    FocusScannedInfo, FocusTargetComponentResource, HumanoidBodyVariant, HumanoidBodyVariantGroup, SpawnSetup,\
+    SpawnSetupGroup, VoiceComponentResource
 import os
+from pydecima.enums import ETextLanguages
 
+game_root_file = os.path.join(os.path.dirname(__file__), r'hzd_root_path.txt')
 name_map = {"ambert": "Amber Trujillo",
             "anis": "Ani Sava",
             "armona": "Amron Adams",
@@ -113,30 +118,30 @@ name_map = {"ambert": "Amber Trujillo",
             "zirah": "Zairah"}
 
 
-def get_names(setup: decima.SpawnSetup, script_objects):
+def get_names(setup: SpawnSetup, script_objects):
     names: Set[str] = set()
     for x in map(lambda v: v.follow(script_objects), setup.unk_refs_3):
-        if isinstance(x, decima.VoiceComponentResource):
+        if isinstance(x, VoiceComponentResource):
             for voice_signal in x.voice_signals:
                 names.add(voice_signal.follow(script_objects)
                                       .voice.follow(script_objects)
-                                      .text.follow(script_objects).language[decima.ETextLanguages.English])
-        if isinstance(x, decima.FocusTargetComponentResource):
+                                      .text.follow(script_objects).language[ETextLanguages.English])
+        if isinstance(x, FocusTargetComponentResource):
             names.add(x.focus_scanned_info
                       .follow(script_objects).title
-                      .follow(script_objects).language[decima.ETextLanguages.English])
-        if isinstance(x, decima.FocusScannedInfo):
-            names.add(x.title.follow(script_objects).language[decima.ETextLanguages.English])
-        if isinstance(x, decima.CharacterDescriptionComponentResource):
-            names.add(x.character_name.follow(script_objects).language[decima.ETextLanguages.English])
+                      .follow(script_objects).language[ETextLanguages.English])
+        if isinstance(x, FocusScannedInfo):
+            names.add(x.title.follow(script_objects).language[ETextLanguages.English])
+        if isinstance(x, CharacterDescriptionComponentResource):
+            names.add(x.character_name.follow(script_objects).language[ETextLanguages.English])
     return names
 
 
-def get_face_from_body_variant(variant: decima.HumanoidBodyVariant, script_objects):
+def get_face_from_body_variant(variant: HumanoidBodyVariant, script_objects):
     print(' {}'.format(variant))
     facrs = filter(lambda f: f.follow(script_objects).type == 'FacialAnimationComponentResource', variant.unk_refs_1)
     for z in facrs:
-        obj: decima.FacialAnimationComponentResource = z.follow(script_objects)
+        obj: FacialAnimationComponentResource = z.follow(script_objects)
         facr = ''
         if obj.name != 'FacialAnimationComponentResource':
             facr_name = obj.name[5:] if obj.name.startswith('FACR_') else obj.name
@@ -155,33 +160,33 @@ def get_face_from_body_variant(variant: decima.HumanoidBodyVariant, script_objec
 
 
 def get_faces(spawn_file, script_objects):
-    decima.read_objects(spawn_file, script_objects)
+    pydecima.reader.read_objects(spawn_file, script_objects)
     names = set()
-    spawn_groups = [x for x in script_objects.values() if isinstance(x, decima.SpawnSetupGroup)]
-    variants: Set[decima.HumanoidBodyVariant] = set()
+    spawn_groups = [x for x in script_objects.values() if isinstance(x, SpawnSetupGroup)]
+    variants: Set[HumanoidBodyVariant] = set()
 
     def spawn_setup_is_weird(spawn, objects):
         return spawn.humanoid_body_variant.follow(objects).name == 'Nora_Child_Group'
 
     # logic for dealing with weird conditional in some nora spawnsetups that replaces them with children(???)
-    spawn_setups: List[decima.SpawnSetup] = []
+    spawn_setups: List[SpawnSetup] = []
     if len(spawn_groups) > 0:
         for x in spawn_groups:
             group_setups = map(lambda v: v.unk_ref.follow(script_objects), x.unk_structs)
-            group_setups = filter(lambda v: isinstance(v, decima.SpawnSetup)
+            group_setups = filter(lambda v: isinstance(v, SpawnSetup)
                                   and v.humanoid_body_variant.type != 0
                                   and not spawn_setup_is_weird(v, script_objects), group_setups)
             spawn_setups += list(group_setups)
     else:
-        spawn_setups = list(filter(lambda v: isinstance(v, decima.SpawnSetup)
+        spawn_setups = list(filter(lambda v: isinstance(v, SpawnSetup)
                                    and v.humanoid_body_variant.type != 0, script_objects.copy().values()))
 
     for x in spawn_setups:
         names = names.union(get_names(x, script_objects))
         body_variant = x.humanoid_body_variant.follow(script_objects)
-        if isinstance(body_variant, decima.HumanoidBodyVariantGroup):
+        if isinstance(body_variant, HumanoidBodyVariantGroup):
             variants = variants.union({v.follow(script_objects) for v in body_variant.body_variants})
-        elif isinstance(body_variant, decima.HumanoidBodyVariant):
+        elif isinstance(body_variant, HumanoidBodyVariant):
             variants.add(body_variant)
         else:
             assert False
@@ -199,5 +204,6 @@ def dump_all(path):
             get_faces(os.path.join(root, f), script_objects)
 
 
+pydecima.reader.set_globals(_game_root_file=game_root_file, _decima_version='HZDPC')
 dump_all(r'E:\Game Files\HZDPC\entities\spawnsetups\characters')
 dump_all(r'E:\Game Files\HZDPC\entities\dlc1\spawnsetups\characters')
