@@ -1,6 +1,6 @@
-#Sentence Dumper
+# Sentence Dumper
 
-##Prerequisites
+## Prerequisites
 In order to use this tool, you will need:
 
 1. Python 3.7 or higher (lower versions of Python 3.x may also work- I haven't checked).

@@ -205,5 +205,5 @@ def dump_all(path):
 
 
 pydecima.reader.set_globals(_game_root_file=game_root_file, _decima_version='HZDPC')
-dump_all(r'E:\Game Files\HZDPC\entities\spawnsetups\characters')
-dump_all(r'E:\Game Files\HZDPC\entities\dlc1\spawnsetups\characters')
+dump_all(os.path.join(pydecima.reader.game_root, r'entities/spawnsetups/characters'))
+dump_all(os.path.join(pydecima.reader.game_root, r'entities/dlc1/spawnsetups/characters'))

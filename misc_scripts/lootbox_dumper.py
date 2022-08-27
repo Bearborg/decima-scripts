@@ -4,7 +4,7 @@ import pydecima
 from pydecima.resources import EntityResource, InventoryEntityResource, InventoryItemComponentResource, \
     InventoryLootPackageComponentResource, LootData, LootItem, LootSlot
 
-game_root_file = os.path.join(os.path.dirname(__file__), r'hzd_ps4_root_path.txt')
+game_root_file = os.path.join(os.path.dirname(__file__), r'hzd_root_path.txt')
 script_objects = {}
 
 
@@ -52,12 +52,12 @@ def recurse_loot(loot, level=0):
         print('{}{}'.format(indent_char * level, loot))
 
 
-box_file = r'E:\Game Files\HZDCE\Image0\packed_pink\entities\shops\items_econ\econ_items.core'
-# box_file = r'E:\Game Files\HZDCE\Image0\packed_pink\entities\dlc1\economy\dlc1_loot_items.core'
+pydecima.reader.set_globals(_game_root_file=game_root_file, _decima_version='HZDPC')
+base_game_box_file = os.path.join(pydecima.reader.game_root, r'entities/shops/items_econ/econ_items.core')
+dlc_box_file = os.path.join(pydecima.reader.game_root, r'entities/dlc1/economy/dlc1_loot_items.core')
+pydecima.reader.read_objects(base_game_box_file, script_objects)
+pydecima.reader.read_objects(dlc_box_file, script_objects)
 
-pydecima.reader.set_globals(_game_root_file=game_root_file, _decima_version='HZDPS4')
-pydecima.reader.read_objects(box_file, script_objects)
-# x: InventoryLootPackageComponentResource = script_objects[binascii.a2b_hex('B423B7BE5FE234329211502E3DA5F021')]
 for x in script_objects.copy().values():
     if x.type == 'InventoryLootPackageComponentResource':
         recurse_loot(x)

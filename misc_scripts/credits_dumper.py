@@ -6,8 +6,8 @@ game_root_file = os.path.join(os.path.dirname(__file__), r'hzd_root_path.txt')
 
 script_objects = {}
 pydecima.reader.set_globals(_game_root_file=game_root_file, _decima_version='HZDPC')
-pydecima.reader.read_objects(r'E:\Game Files\HZDPC\interface\menu\datasources\datasourcecreditsresource.core',
-                             script_objects)
+credits_file = os.path.join(pydecima.reader.game_root, r'interface/menu/datasources/datasourcecreditsresource.core')
+pydecima.reader.read_objects(credits_file, script_objects)
 credits_resource = [v for v in script_objects.values() if isinstance(v, DataSourceCreditsResource)][0]
 for row in credits_resource.rows:
     row_obj = row.follow(script_objects)

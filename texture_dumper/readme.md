@@ -1,6 +1,6 @@
-#Sound Dumper
+# Texture Dumper
 
-##Prerequisites
+## Prerequisites
 In order to use this tool, you will need:
 
 1. Python 3.7 or higher (lower versions of Python 3.x may also work- I haven't checked).
@@ -14,12 +14,12 @@ the "textures" folder to the location `C:\HZD\textures`, you should put `C:\HZD`
 ## Running the script
 The simplest way to run the dumper is by providing only a path to a .core file:
 
-`python sound_dumper.py "C:\HZD\sounds\effects\robots\scout\scout_main\wav\vox_alerted_transition_a_1.core"`
+`python texture_dumper.py "C:\HZD\models\characters\humans\aloy\textures\aloy_set.core"`
 
-This will dump all sound effects contained in the file.
+This will dump all textures contained in the file.
 
 You can also provide a directory path:
 
-`python texture_dumper.py "C:\HZD\sounds\effects\robots\scout\scout_main"`
+`python texture_dumper.py "C:\HZD\models\characters\humans\aloy\textures"`
 
-This will dump all sound effects for any .core files in the directory, or in its subdirectories.
+This will dump all textures for any .core files in the directory, or in its subdirectories.
