@@ -4,7 +4,8 @@
 In order to use this tool, you will need:
 
 1. Python 3.7 or higher (lower versions of Python 3.x may also work- I haven't checked).
-2. Extracted .core files from Horizon Zero Dawn's .bin archives. I recommend using 
+2. The PyDecima package, installed by running `pip install pydecima`
+3. Extracted .core files from Horizon Zero Dawn's .bin archives. I recommend using 
    [Decima Explorer](https://github.com/Jayveer/Decima-Explorer), but other tools may work too.
 
 Before running the script, you will also need to provide the root directory of your game files. Edit 
