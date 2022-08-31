@@ -15,7 +15,7 @@ def extract_file(bin_file, filename, out_file, deci_exp):
 
 
 def dump_bins(archive, deci_exp):
-    bin_file = os.path.split(archive)[1]
+    bin_file = os.path.split(archive)[1].lower()
     filenames = language_stream_contents[bin_file]
     for i in range(len(filenames)):
         file = 'localized/sentences/' + filenames[i]
@@ -38,7 +38,7 @@ def main():
         print(f"Provided path to Decima Explorer is not an executable file")
         exit(1)
     filename = os.path.split(args.path_to_bin)[1]
-    if filename not in language_stream_contents:
+    if filename.lower() not in language_stream_contents:
         print(f"Filename {filename} is not a recognized HZD language file")
         exit(1)
     print(f"Dumping bin {filename}")
