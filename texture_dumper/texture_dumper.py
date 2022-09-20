@@ -358,7 +358,7 @@ def main():
                         help="Path to a .core file containing textures, or a directory to recursively dump from.")
     args = parser.parse_args()
 
-    game_root_file = os.path.join(os.path.dirname(__file__), r'../hzd_root_path.txt')
+    game_root_file = os.path.join(os.path.dirname(__file__), r'hzd_root_path.txt')
     pydecima.reader.set_globals(_game_root_file=game_root_file, _decima_version='HZDPC')
 
     if os.path.isfile(args.path) and os.path.splitext(args.path)[1] == ".core":
