@@ -4,7 +4,7 @@
 In order to use this tool, you will need:
 
 1. Python 3.7 or higher (lower versions of Python 3.x may also work- I haven't checked).
-2. The PyDecima package, installed by running `pip install pydecima`
+2. The Invoke and PyDecima packages, installed by running `pip install invoke pydecima`
 3. An extracted "localized" directory from Horizon Zero Dawn's .bin
    archives. I recommend using [Decima Explorer](https://github.com/Jayveer/Decima-Explorer), but other tools may work
    too.
